@@ -19,7 +19,7 @@ const isAuthenticated = async (req, res, next) => {
         return res.status(401).json({ error: "Unauthorized" });
       }
     } else {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: "Unauthorized (ici)" });
     }
   } catch (error) {
     res.status(400).json({ error: error.message });

@@ -45,7 +45,7 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
       if (picture) {
         const pictureOffer = picture.path;
         let result = await cloudinary.uploader.upload(pictureOffer, {
-          folder: "/vinted/offers/" + newOffer._id,
+          folder: `/vinted/offers/${newOffer._id}`,
         });
 
         // Add result (infos about the uploaded image) to the document in DB
@@ -65,20 +65,32 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
 });
 
 // Route to delete an offer
-router.delete("/offer/delete", isAuthenticated, async (req, res) => {
+router.delete("/offer/delete/:id", isAuthenticated, async (req, res) => {
   try {
     // Check if ID corresponds to an offer
-    const offerToDelete = await Offer.findById(req.query.id);
-    if (offerToDelete) {
-      // Delete image from Cloudify
-      await cloudinary.api.delete_resources(
-        offerToDelete.product_image.public_id
-      );
-      // Delete offer from DB
-      await Offer.findByIdAndDelete(req.query.id);
+    const offerToDelete = await Offer.findById(req.params.id);
 
-      // Respond to client
-      res.status(200).json({ message: "Offer successfully deleted." });
+    if (offerToDelete) {
+      // check if the token of the user trying to delete offer === token user who posted the offer
+      const user = await User.findById(offerToDelete.owner._id);
+      const token = req.headers.authorization.replace("Bearer ", "");
+      if (token === user.token) {
+        // Delete image from Cloudify
+        await cloudinary.api.delete_resources_by_prefix(
+          `vinted/offers/${req.params.id}`
+        );
+
+        // Delete folder from Cloudinary
+        await cloudinary.api.delete_folder(`vinted/offers/${req.params.id}`);
+
+        // Delete offer from DB
+        await offerToDelete.delete();
+
+        // Respond to client
+        res.status(200).json({ message: "Offer successfully deleted." });
+      } else {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
     } else {
       res.status(400).json({ message: "This offer doesn't exist." });
     }
@@ -88,24 +100,90 @@ router.delete("/offer/delete", isAuthenticated, async (req, res) => {
 });
 
 // Route to update an offer
-router.put("/offer/update", isAuthenticated, async (req, res) => {
+router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
   try {
+    const {
+      title,
+      description,
+      price,
+      brand,
+      size,
+      condition,
+      color,
+      city,
+    } = req.fields;
     // Check if ID corresponds to an offer
-    const offerToUpdate = await Offer.findById(req.fields.id);
+    const offerToUpdate = await Offer.findById(req.params.id);
     if (offerToUpdate) {
-      // Update the document
-      offerToUpdate.product_name = req.fields.title;
-      offerToUpdate.product_description = req.fields.description;
-      offerToUpdate.product_price = req.fields.price;
-      offerToUpdate.product_details[0].MARQUE = req.fields.brand;
-      offerToUpdate.product_details[1].TAILLE = req.fields.size;
-      offerToUpdate.product_details[2].ÉTAT = req.fields.condition;
-      offerToUpdate.product_details[3].COULEUR = req.fields.color;
-      offerToUpdate.product_details[4].EMPLACEMENT = req.fields.city;
+      // check if the token of the user trying to delete offer === token user who posted the offer
+      const user = await User.findById(offerToUpdate.owner._id);
+      const token = req.headers.authorization.replace("Bearer ", "");
+      if (token === user.token) {
+        // Update the document
+        if (title) {
+          offerToUpdate.product_name = title;
+        }
 
-      await offerToUpdate.save();
-      // Respond to the client
-      res.status(200).json(offerToUpdate);
+        if (description) {
+          offerToUpdate.product_description = description;
+        }
+
+        if (price) {
+          offerToUpdate.product_price = price;
+        }
+
+        const productDetails = offerToUpdate.product_details;
+        for (let i = 0; i < productDetails.length; i++) {
+          if (productDetails[i].MARQUE) {
+            if (brand) {
+              productDetails[i].MARQUE = brand;
+            }
+          }
+
+          if (productDetails[i].TAILLE) {
+            if (size) {
+              productDetails[i].TAILLE = size;
+            }
+          }
+
+          if (productDetails[i].ÉTAT) {
+            if (condition) {
+              productDetails[i].ÉTAT = condition;
+            }
+          }
+
+          if (productDetails[i].COULEUR) {
+            if (color) {
+              productDetails[i].COULEUR = color;
+            }
+          }
+
+          if (productDetails[i].EMPLACEMENT) {
+            if (city) {
+              productDetails[i].EMPLACEMENT = city;
+            }
+          }
+        }
+
+        if (req.files.picture) {
+          // Delete previous picture from Cloudinary
+          await cloudinary.api.delete_resources_by_prefix(
+            `vinted/offers/${req.params.id}`
+          );
+          // Add new picture in the folder
+          const result = await cloudinary.uploader.upload(req.files.path, {
+            folder: `/vinted/offers/"${req.params.id}`,
+          });
+          // Modify infos about picture in the document
+          offerToUpdate.product_image = result;
+        }
+
+        await offerToUpdate.save();
+        // Respond to the client
+        res.status(200).json({ message: "Offer successfully modified" });
+      } else {
+        res.status(400).json({ error: "Unauthorized" });
+      }
     } else {
       res.status(400).json({ message: "This offer doesn't exist." });
     }
