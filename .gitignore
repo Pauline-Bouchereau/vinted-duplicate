@@ -1,0 +1,6 @@
+node_modules
+.env
+brouillon.js
+.DS_Store
+package-lock.json
+pictures
