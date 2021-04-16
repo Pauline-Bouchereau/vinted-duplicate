@@ -13,29 +13,37 @@ const Offer = require("../models/Offer");
 // Route to publish a new offer
 router.post("/offer/publish", isAuthenticated, async (req, res) => {
   try {
-    if (
-      req.fields.description.length <= 500 &&
-      req.fields.title.length <= 50 &&
-      req.fields.price <= 100000
-    ) {
+    const {
+      description,
+      title,
+      price,
+      condition,
+      city,
+      brand,
+      size,
+      color,
+      picture,
+    } = req.fields;
+
+    if (description.length <= 500 && title.length <= 50 && price <= 100000) {
       // Create the new offer
       const newOffer = new Offer({
-        product_name: req.fields.title,
-        product_description: req.fields.description,
-        product_price: req.fields.price,
+        product_name: title,
+        product_description: description,
+        product_price: price,
         product_details: [
-          { MARQUE: req.fields.brand },
-          { TAILLE: req.fields.size },
-          { ÉTAT: req.fields.condition },
-          { COULEUR: req.fields.color },
-          { EMPLACEMENT: req.fields.city },
+          { MARQUE: brand },
+          { TAILLE: size },
+          { ÉTAT: condition },
+          { COULEUR: color },
+          { EMPLACEMENT: city },
         ],
         owner: req.user,
       });
 
       // Upload the picture to Cloudinary
-      if (req.files.picture) {
-        const pictureOffer = req.files.picture.path;
+      if (picture) {
+        const pictureOffer = picture.path;
         let result = await cloudinary.uploader.upload(pictureOffer, {
           folder: "/vinted/offers/" + newOffer._id,
         });
