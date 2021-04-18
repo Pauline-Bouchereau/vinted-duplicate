@@ -22,7 +22,6 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
       brand,
       size,
       color,
-      picture,
     } = req.fields;
 
     if (description.length <= 500 && title.length <= 50 && price <= 100000) {
@@ -42,8 +41,8 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
       });
 
       // Upload the picture to Cloudinary
-      if (picture) {
-        const pictureOffer = picture.path;
+      if (req.files.picture) {
+        const pictureOffer = req.files.picture.path;
         let result = await cloudinary.uploader.upload(pictureOffer, {
           folder: `/vinted/offers/${newOffer._id}`,
         });
@@ -171,9 +170,12 @@ router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
             `vinted/offers/${req.params.id}`
           );
           // Add new picture in the folder
-          const result = await cloudinary.uploader.upload(req.files.path, {
-            folder: `/vinted/offers/"${req.params.id}`,
-          });
+          const result = await cloudinary.uploader.upload(
+            req.files.picture.path,
+            {
+              folder: `/vinted/offers/"${req.params.id}`,
+            }
+          );
           // Modify infos about picture in the document
           offerToUpdate.product_image = result;
         }
@@ -239,7 +241,7 @@ router.get("/offers", async (req, res) => {
       .sort(sortMethod)
       .skip(skip)
       .limit(limitChosen)
-      .populate("owner", "-salt -hash -token");
+      .populate("owner", "account");
 
     // Check if the page number is valid (<= to the total number of pages of the research) & respond to the client
     const numberOfResults = await Offer.countDocuments(filters);
@@ -262,10 +264,11 @@ router.get("/offers", async (req, res) => {
 router.get("/offer/:id", async (req, res) => {
   try {
     if (req.params.id) {
-      const offer = await Offer.findById(req.params.id).populate({
-        path: "owner",
-        select: "-token -hash -salt -email -__v",
-      });
+      const offer = await Offer.findById(req.params.id).populate(
+        "owner",
+        "account"
+      );
+
       if (offer) {
         res.status(200).json(offer);
       } else {
