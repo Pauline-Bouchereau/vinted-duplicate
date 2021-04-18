@@ -163,6 +163,7 @@ router.put("/offer/update/:id", isAuthenticated, async (req, res) => {
             }
           }
         }
+        offerToUpdate.markModified("product_details");
 
         if (req.files.picture) {
           // Delete previous picture from Cloudinary
