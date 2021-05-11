@@ -36,7 +36,6 @@ app.all("*", (req, res) => {
   res.status(404).json({ message: "This page doesn't exist" });
 });
 
-app.listen(3001, () => {
+app.listen(process.env.PORT, () => {
   console.log("Server started");
 });
-//process.env.PORT
