@@ -23,8 +23,10 @@ cloudinary.config({
 
 const userRoutes = require("./routes/user");
 const offerRoutes = require("./routes/offer");
+const paymentRoutes = require("./routes/payment");
 app.use(userRoutes);
 app.use(offerRoutes);
+app.use(paymentRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Bienvenue sur ma copie du site Vinted !" });
@@ -34,6 +36,7 @@ app.all("*", (req, res) => {
   res.status(404).json({ message: "This page doesn't exist" });
 });
 
-app.listen(process.env.PORT, () => {
+app.listen(3001, () => {
   console.log("Server started");
 });
+//process.env.PORT
